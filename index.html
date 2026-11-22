@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ГАРАЖ-ТРЕКЕР — Бортжурнал авто</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#090d16;color:#f8fafc;padding-bottom:75px}
+header{background:#111827;border-bottom:2px solid #3b82f6;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.logo{font-size:18px;font-weight:900;letter-spacing:.5px}
+.logo span{color:#3b82f6}
+.car-badge{background:#1e293b;border:1px solid #334155;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;color:#cbd5e1;cursor:pointer}
+.wrap{max-width:480px;margin:0 auto;padding:14px}
+.trip-bar{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.trip-bar.active{border-color:#f59e0b;background:rgba(245,158,11,.08)}
+.switch{position:relative;display:inline-block;width:46px;height:26px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:#334155;border-radius:26px;transition:.25s}
+.slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}
+input:checked+.slider{background:#f59e0b}
+input:checked+.slider:before{transform:translateX(20px)}
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat-card{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:12px}
+.stat-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;font-weight:700;margin-bottom:4px}
+.stat-val{font-size:19px;font-weight:900;color:#fff}
+.stat-val.blue{color:#60a5fa}
+.stat-val.green{color:#34d399}
+.oil-box{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px;margin-bottom:14px}
+.oil-top{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px}
+.bar-bg{background:#1f2937;height:10px;border-radius:99px;overflow:hidden}
+.bar-fill{background:#10b981;height:100%;transition:width .3s}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.btn-add{border:none;padding:12px;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;color:#fff}
+.btn-fuel{background:#2563eb}
+.btn-serv{background:#059669}
+.btn-dl{width:100%;background:#1e293b;border:1px solid #334155;color:#cbd5e1;padding:10px;border-radius:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:14px}
+.form-card{display:none;background:#111827;border:1px solid #3b82f6;border-radius:16px;padding:15px;margin-bottom:14px}
+.form-card.open{display:block}
+.form-card h3{font-size:16px;margin-bottom:10px}
+.field{width:100%;padding:11px;margin-bottom:9px;border-radius:9px;border:1px solid #334155;background:#090d16;color:#fff;font-size:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hist-head{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px}
+.hist-title{font-size:13px;font-weight:800;color:#9ca3af;text-transform:uppercase}
+.filter-pills{display:flex;gap:6px}
+.pill{background:#111827;border:1px solid #1f2937;color:#9ca3af;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer}
+.pill.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.log-item{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.log-type{font-weight:800;font-size:14px;margin-bottom:2px}
+.trip-tag{background:rgba(245,158,11,.18);color:#fbbf24;font-size:10px;padding:2px 6px;border-radius:5px;margin-left:5px}
+.log-sub{font-size:12px;color:#9ca3af}
+.log-sum{font-weight:900;font-size:15px;color:#fff;white-space:nowrap}
+.del-x{background:none;border:none;color:#6b7280;font-size:16px;cursor:pointer;padding-left:6px}
+.ad-dock{position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;padding:10px 14px;text-align:center;font-size:12px;color:#94a3b8;z-index:90}
+</style>
+</head>
+<body>
+<header>
+    <div class="logo">ГАРАЖ<span>ТРЕКЕР</span></div>
+    <div class="car-badge" id="carNameBtn" onclick="editCar()">🚙 Моё авто ✎</div>
+</header>
+
+<div class="wrap">
+    <div class="trip-bar" id="tripBox">
+        <div>
+            <div style="font-weight:800;font-size:14px">🛫 Режим командировки</div>
+            <div style="font-size:11px;color:#9ca3af" id="tripHint">Выкл — показана общая статистика</div>
+        </div>
+        <label class="switch">
+            <input type="checkbox" id="tripSwitch" onchange="toggleTrip()">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="dash">
+        <div class="stat-card">
+            <div class="stat-lbl" id="odoLbl">Текущий пробег</div>
+            <div class="stat-val blue" id="odoVal">0 км</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-lbl" id="avgLbl">Средний расход</div>
+            <div class="stat-val green" id="avgFuelVal">— л/100</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-lbl" id="fuelLbl">На топливо всего</div>
+            <div class="stat-val" id="fuelSumVal">0 ₽</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-lbl" id="servLbl">На ТО и ремонт</div>
+            <div class="stat-val" id="servSumVal">0 ₽</div>
+        </div>
+    </div>
+
+    <div class="oil-box">
+        <div class="oil-top">
+            <span>🛢️ Ресурс масла (интервал 8 000 км)</span>
+            <span id="oilLeftTxt" style="color:#34d399">8 000 км</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="oilBar" style="width:100%"></div></div>
+    </div>
+
+    <div class="tabs">
+        <button class="btn-add btn-fuel" onclick="toggleForm('fuelForm')">⛽️ + Заправка</button>
+        <button class="btn-add btn-serv" onclick="toggleForm('servForm')">🔧 + ТО / Ремонт</button>
+    </div>
+
+    <button class="btn-dl" onclick="exportTripCSV()">📄 Скачать отчёт по командировке (Excel)</button>
+
+    <div class="form-card" id="fuelForm">
+        <h3>⛽️ Добавить заправку</h3>
+        <input type="text" inputmode="numeric" class="field" id="fOdo" placeholder="Пробег на одометре (км)">
+        <div class="row2">
+            <input type="text" inputmode="decimal" class="field" id="fLiters" placeholder="Литров (напр. 45)">
+            <input type="text" inputmode="numeric" class="field" id="fCost" placeholder="Сумма в ₽">
+        </div>
+        <button class="btn-add btn-fuel" style="width:100%" onclick="saveFuel()">Сохранить заправку</button>
+    </div>
+
+    <div class="form-card" id="servForm" style="border-color:#10b981">
+        <h3>🔧 Запись о ТО или расходах</h3>
+        <input type="text" inputmode="numeric" class="field" id="sOdo" placeholder="Пробег на одометре (км)">
+        <input type="text" class="field" id="sTitle" placeholder="Что делали (напр. Замена масла, страховка)">
+        <input type="text" inputmode="numeric" class="field" id="sCost" placeholder="Стоимость в ₽">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#cbd5e1;margin-bottom:10px">
+            <input type="checkbox" id="sIsOil"> Сбросить счётчик замены масла
+        </label>
+        <button class="btn-add btn-serv" style="width:100%" onclick="saveServ()">Сохранить запись</button>
+    </div>
+
+    <div class="hist-head">
+        <div class="hist-title">📋 История</div>
+        <div class="filter-pills">
+            <button class="pill active" id="tabAll" onclick="setFilter('all')">Все записи</button>
+            <button class="pill" id="tabTrip" onclick="setFilter('trip')">🛫 Командировки</button>
+        </div>
+    </div>
+    <div id="logsList"></div>
+</div>
+
+<div class="ad-dock">📢 Место под рекламный баннер Яндекс (РСЯ)</div>
+<script>
+const KEY = 'garage_tracker_trip_complete_v1';
+let histFilter = 'all';
+
+let db = JSON.parse(localStorage.getItem(KEY)) || {
+    carName: 'Шевроле Нива',
+    tripActive: false,
+    currentTripId: null,
+    logs: []
+};
+
+function persist(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+
+function cleanInt(val){
+    return parseInt(String(val).replace(/[^\d]/g, ''), 10) || 0;
+}
+
+function toggleTrip(){
+    const checked = document.getElementById('tripSwitch').checked;
+    db.tripActive = checked;
+    db.currentTripId = checked ? Date.now() : null;
+    persist(); render();
+}
+
+function setFilter(f){
+    histFilter = f;
+    document.getElementById('tabAll').classList.toggle('active', f === 'all');
+    document.getElementById('tabTrip').classList.toggle('active', f === 'trip');
+    render();
+}
+
+function editCar(){
+    const name = prompt('Введите марку и модель вашего авто:', db.carName);
+    if(name && name.trim()){
+        db.carName = name.trim();
+        persist(); render();
+    }
+}
+
+function toggleForm(id){
+    const el = document.getElementById(id);
+    const isOpen = el.classList.contains('open');
+    document.querySelectorAll('.form-card').forEach(f => f.classList.remove('open'));
+    if(!isOpen) el.classList.add('open');
+}
+
+function saveFuel(){
+    const odo = cleanInt(document.getElementById('fOdo').value);
+    const liters = parseFloat(String(document.getElementById('fLiters').value).replace(',', '.')) || 0;
+    const cost = cleanInt(document.getElementById('fCost').value);
+    if(!odo || !liters || !cost){ alert('Заполните пробег, литры и сумму!'); return; }
+    db.logs.push({
+        id: Date.now(), type: 'fuel', odo, liters, cost,
+        date: new Date().toLocaleDateString('ru-RU'),
+        isTrip: !!db.tripActive,
+        tripId: db.currentTripId || null
+    });
+    document.getElementById('fOdo').value = '';
+    document.getElementById('fLiters').value = '';
+    document.getElementById('fCost').value = '';
+    toggleForm('fuelForm');
+    persist(); render();
+}
+
+function saveServ(){
+    const odo = cleanInt(document.getElementById('sOdo').value);
+    const title = document.getElementById('sTitle').value.trim();
+    const cost = cleanInt(document.getElementById('sCost').value);
+    const isOil = document.getElementById('sIsOil').checked;
+    if(!odo || !title){ alert('Укажите пробег и название работы!'); return; }
+    db.logs.push({
+        id: Date.now(), type: isOil ? 'oil' : 'serv', odo, title, cost,
+        date: new Date().toLocaleDateString('ru-RU'),
+        isTrip: !!db.tripActive,
+        tripId: db.currentTripId || null
+    });
+    document.getElementById('sOdo').value = '';
+    document.getElementById('sTitle').value = '';
+    document.getElementById('sCost').value = '';
+    document.getElementById('sIsOil').checked = false;
+    toggleForm('servForm');
+    persist(); render();
+}
+
+function delLog(id){
+    if(confirm('Удалить эту запись из бортжурнала?')){
+        db.logs = db.logs.filter(x => x.id !== id);
+        persist(); render();
+    }
+}
+
+function calcAvgFuel(fuelLogs){
+    const sorted = [...fuelLogs].sort((a,b) => a.odo - b.odo);
+    if(sorted.length < 2) return '—';
+    let totalDist = 0, totalLit = 0;
+    for(let i = 1; i < sorted.length; i++){
+        const prev = sorted.at(i - 1);
+        const curr = sorted.at(i);
+        if(curr.tripId !== prev.tripId && curr.isTrip) continue;
+        const d = curr.odo - prev.odo;
+        if(d > 0){
+            totalDist += d;
+            totalLit += curr.liters;
+        }
+    }
+    return totalDist > 0 ? ((totalLit / totalDist) * 100).toFixed(1) : '—';
+}
+
+function exportTripCSV(){
+    const tripLogs = db.logs.filter(l => l.isTrip);
+    if(!tripLogs.length){ alert('Нет записей за командировку! Включите тумблер командировки и внесите заправки.'); return; }
+    let csv = '\uFEFFДата;Тип;Описание;Пробег (км);Литры;Сумма (руб)\n';
+    let total = 0;
+    [...tripLogs].sort((a,b) => a.odo - b.odo).forEach(l => {
+        const typeName = l.type === 'fuel' ? 'Заправка' : (l.type === 'oil' ? 'Замена масла' : 'ТО / Ремонт');
+        const desc = l.type === 'fuel' ? 'Топливо (командировка)' : l.title;
+        const lit = l.liters ? String(l.liters).replace('.', ',') : '';
+        total += l.cost;
+        csv += `${l.date};${typeName};${desc};${l.odo};${lit};${l.cost}\n`;
+    });
+    csv += `;;;;ИТОГО ЗА КОМАНДИРОВКУ:;${total}\n`;
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Komandirovka_${db.carName.replace(/\s+/g,'_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function render(){
+    document.getElementById('carNameBtn').innerText = '🚙 ' + db.carName + ' ✎';
+    document.getElementById('tripSwitch').checked = !!db.tripActive;
+    document.getElementById('tripBox').classList.toggle('active', !!db.tripActive);
+    document.getElementById('tripHint').innerText = db.tripActive
+        ? 'Вкл — счётчики обнулены под текущую поездку'
+        : 'Выкл — показана общая статистика (дом + рейсы)';
+
+    const allSorted = [...db.logs].sort((a,b) => b.odo - a.odo);
+    const maxOdoAll = allSorted.length ? allSorted.at(0).odo : 0;
+
+    const scopeLogs = db.tripActive
+        ? db.logs.filter(l => l.tripId === db.currentTripId)
+        : db.logs;
+
+    const scopeSorted = [...scopeLogs].sort((a,b) => b.odo - a.odo);
+    const odoEl = document.getElementById('odoVal');
+    document.getElementById('odoLbl').innerText = db.tripActive ? 'Пробег в рейсе' : 'Текущий пробег';
+
+    if(db.tripActive){
+        const tripDist = scopeSorted.length >= 2 ? (scopeSorted.at(0).odo - scopeSorted.at(-1).odo) : 0;
+        const currOdo = scopeSorted.length ? scopeSorted.at(0).odo : maxOdoAll;
+        odoEl.innerHTML = `${tripDist.toLocaleString('ru-RU')} км<div style="font-size:11px;color:#9ca3af;font-weight:600;margin-top:2px">Общий: ${currOdo.toLocaleString('ru-RU')} км</div>`;
+    } else {
+        odoEl.innerText = maxOdoAll.toLocaleString('ru-RU') + ' км';
+    }
+
+    document.getElementById('avgLbl').innerText = db.tripActive ? 'Расход в рейсе' : 'Средний расход';
+    document.getElementById('fuelLbl').innerText = db.tripActive ? 'Топливо (рейс)' : 'На топливо всего';
+    document.getElementById('servLbl').innerText = db.tripActive ? 'Прочее (рейс)' : 'На ТО и ремонт';
+
+    let fuelSum = 0, servSum = 0;
+    scopeLogs.forEach(l => {
+        if(l.type === 'fuel') fuelSum += l.cost;
+        else servSum += l.cost;
+    });
+    document.getElementById('fuelSumVal').innerText = fuelSum.toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('servSumVal').innerText = servSum.toLocaleString('ru-RU') + ' ₽';
+
+    const avg = calcAvgFuel(scopeLogs.filter(l => l.type === 'fuel'));
+    document.getElementById('avgFuelVal').innerText = avg + ' л/100';
+
+    const oilLogs = db.logs.filter(l => l.type === 'oil').sort((a,b) => b.odo - a.odo);
+    const baseOil = oilLogs.length ? oilLogs.at(0).odo : 0;
+    const passed = Math.max(0, maxOdoAll - baseOil);
+    const left = Math.max(0, 8000 - passed);
+    const pct = Math.round((left / 8000) * 100);
+    const bar = document.getElementById('oilBar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct < 20 ? '#ef4444' : (pct < 45 ? '#f59e0b' : '#10b981');
+    document.getElementById('oilLeftTxt').innerText = left > 0 ? `осталось ${left.toLocaleString('ru-RU')} км` : 'ПОРА МЕНЯТЬ!';
+    document.getElementById('oilLeftTxt').style.color = pct < 20 ? '#ef4444' : '#34d399';
+
+    const visibleLogs = histFilter === 'trip'
+        ? allSorted.filter(l => l.isTrip)
+        : allSorted;
+
+    const list = document.getElementById('logsList');
+    if(!visibleLogs.length){
+        list.innerHTML = `<div style="text-align:center;color:#6b7280;font-size:13px;padding:18px 0">В этой вкладке пока нет записей</div>`;
+        return;
+    }
+
+    list.innerHTML = visibleLogs.map(l => {
+        const icon = l.type === 'fuel' ? '⛽️' : (l.type === 'oil' ? '🛢️' : '🔧');
+        const mainText = l.type === 'fuel' ? `Заправка ${l.liters} л` : l.title;
+        const badge = l.isTrip ? `<span class="trip-tag">🛫 Рейс</span>` : '';
+        return `
+        <div class="log-item">
+            <div>
+                <div class="log-type">${icon} ${mainText}${badge}</div>
+                <div class="log-sub">${l.date} • Пробег ${l.odo.toLocaleString('ru-RU')} км</div>
+            </div>
+            <div style="display:flex;align-items:center">
+                <span class="log-sum">${l.cost.toLocaleString('ru-RU')} ₽</span>
+                <button class="del-x" onclick="delLog(${l.id})">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+render();
+</script>
+</body>
+</html>
